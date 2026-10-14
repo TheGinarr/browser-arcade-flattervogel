@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07070f">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./assets/style.css">
+  <title>FLATTERVOGEL · Browser-Arcade</title>
+  <meta name="description" content="Tippe im richtigen Moment und flattere mit dem Neon-Vogel durch die Lücken der Energiesäulen. Mit Leertaste, Klick oder Touch spielbar.">
+</head>
+<body style="--ak:var(--pink)">
+  <div class="raster" aria-hidden="true"></div>
+  <a class="skip-link" href="#main">Zum Inhalt springen</a>
+  <header class="kopf"><nav class="container nav" aria-label="Hauptnavigation">
+    <a class="marke" href="./"><span class="logo">▶</span>GAMES</a>
+    <div class="nav-links"><a href="./impressum.html">Impressum</a><a href="./datenschutz.html">Datenschutz</a></div>
+  </nav></header>
+  <main id="main" class="container">
+    <div class="spiel-kopf"><div><h1>FLATTERVOGEL</h1><p class="unterzeile">Tippe im richtigen Moment und flattere durch die Lücken.</p></div></div>
+    <div class="hud">
+      <div class="hud-feld"><div class="label">Punkte</div><div class="wert" id="hud-punkte">0</div></div>
+      <div class="hud-feld"><div class="label">Rekord</div><div class="wert" id="hud-rekord">0</div></div>
+      <div class="hud-feld"><div class="label">Abschnitt</div><div class="wert" id="hud-abschnitt">1</div></div>
+    </div>
+    <div class="buehne">
+      <!-- Logisch 360x540 Pixel. Die CSS-Breite (100%, max. 380px) skaliert das Bild nur;
+           die Spiellogik rechnet immer in den 360x540-Koordinaten. -->
+      <canvas id="leinwand" width="360" height="540" role="img"
+              aria-label="Flattervogel-Spielfeld: ein pinker Vogel fliegt durch die Lücken von Energiesäulen"
+              style="max-width:380px;margin-inline:auto;image-rendering:pixelated"></canvas>
+    </div>
+    <p class="steuerung"><span class="nur-tastatur">Flügelschlag mit <kbd>Leertaste</kbd>, <kbd>↑</kbd>, <kbd>W</kbd> oder Mausklick · <kbd>P</kbd> Pause. Der erste Flügelschlag startet die Runde.</span><span class="nur-touch">Tippen aufs Feld oder auf die Flatter-Taste lässt den Vogel flattern. Der erste Flügelschlag startet die Runde.</span></p>
+    <section style="max-width:420px;margin-top:36px"><h2 style="font-family:var(--pixel);font-weight:400;font-size:.85rem">Lokale Top 3</h2><div id="topliste"></div>
+      <button class="knopf" id="reset" style="margin-top:10px">Spielstand zurücksetzen</button></section>
+    <section class="lernbox"><details open><summary>Anleitung &amp; Regeln</summary>
+      <p><strong>Ziel:</strong> Flieg durch so viele Lücken zwischen den Energiesäulen wie möglich.</p>
+      <ul>
+        <li>Der Vogel fällt ständig. Jeder Flügelschlag gibt ihm einen Schub nach oben.</li>
+        <li>Für jedes Säulenpaar, das du passierst, gibt es 1 Punkt. Mit der Zeit werden die Säulen etwas schneller.</li>
+        <li>Game Over, wenn du eine Säule, den Boden oder die Decke berührst.</li>
+        <li>Alle 10 Säulen beginnt ein neuer Abschnitt: Morgengrauen, Mittag, Böen, Abendrot, Mitternacht. Die Lücken werden etwas enger, ab den Böen schwingen die Säulen auf und ab, und die Tageszeit wechselt.</li>
+        <li>Erreichte Abschnitte kannst du unten direkt anwählen. Gezählt wird trotzdem ab 0.</li>
+        <li>Steuerung: <code>Leertaste</code>, <code>↑</code>, <code>W</code>, Mausklick oder Tippen. Gedrückt halten bringt nichts, jeder Schlag braucht einen neuen Tastendruck. <code>P</code> pausiert.</li>
+      </ul>
+    </details></section>
+
+    <section class="lernbox"><details><summary>Wie funktioniert der Code?</summary>
+      <p><strong>Gravitation und Impuls.</strong> Der Vogel hat nur zwei Werte: seine Höhe <code>y</code> und seine Fallgeschwindigkeit <code>vy</code>. Pro Schritt erhöht die Gravitation <code>vy</code>, und <code>vy</code> verschiebt <code>y</code>. Ein Flügelschlag setzt <code>vy</code> auf einen festen negativen Wert (nach oben). Er überschreibt die alte Geschwindigkeit, deshalb fühlt sich jeder Schlag gleich an, egal wie schnell der Vogel vorher fiel.</p>
+      <p><strong>Spielschleife mit festem Zeitschritt.</strong> <code>requestAnimationFrame</code> ruft <code>einzelbild</code> einmal pro Bildschirm-Frame auf. Ein <em>Akkumulator</em> sammelt die vergangene Zeit, und die Physik läuft in festen Portionen von 1/240 Sekunde. So fliegt der Vogel auf einem 60-Hz-Handy genauso wie auf einem 144-Hz-Monitor.</p>
+      <p><strong>Die Welt bewegt sich, nicht der Vogel.</strong> Der Vogel bleibt bei <code>x = 100</code>, die Säulen wandern nach links. Damit ändert sich bei der Kollision nur noch seine Höhe. Neue Säulenpaare entstehen knapp außerhalb des Bildes, alte werden aussortiert, sobald sie links verschwunden sind.</p>
+      <p><strong>Kollision Kreis gegen Rechteck.</strong> Der Vogel ist ein Kreis, Säulen sind Rechtecke. Zwei Rechtecke zu vergleichen ist leicht, ein Kreis macht es spannender. Der Trick: Suche den Punkt des Rechtecks, der dem Kreismittelpunkt am nächsten liegt. Dafür begrenzt man die x- und y-Koordinate des Mittelpunkts auf den Bereich des Rechtecks (<code>begrenzen</code>). Liegt der Mittelpunkt im Rechteck, ist er sein eigener nächster Punkt, der Abstand ist 0, und es kracht. Liegt er daneben, ist der Abstand die Entfernung zur Kante oder, an einer Ecke, die Diagonale (Pythagoras). Ist dieser Abstand kleiner als der Radius, berühren sich Kreis und Rechteck. Wir vergleichen die Quadrate beider Werte, das spart die Wurzel. An einer Ecke kann der Kreis daher knapp vorbeifliegen, obwohl sein umgebendes Quadrat die Ecke schon überdeckt.</p>
+      <p><strong>Fairness.</strong> Die Hitbox (Radius 13) ist etwas kleiner als der gezeichnete Vogel (Radius 17). Und: Gezeichnet werden exakt dieselben Rechtecke, die auch für die Kollision gelten (<code>saeulenRechtecke</code>). Was du siehst, ist also, was trifft.</p>
+      <p><strong>Säulen fair erzeugen.</strong> Läge die nächste Lücke zufällig ganz oben und die folgende ganz unten, wäre das unschaffbar. Darum darf die Lückenmitte nur 150 Pixel von der vorherigen abweichen. Auch der Abstand zwischen den Paaren wird in Sekunden festgelegt und über <code>Strecke = Tempo * Zeit</code> in Pixel umgerechnet. Der Vogel kann nur begrenzt schnell sinken, bei höherem Tempo braucht er also mehr Platz.</p>
+      <p><strong>Zeichnen mit Drehung.</strong> Für die Neigung verschiebt <code>translate</code> den Nullpunkt in die Vogelmitte, <code>rotate</code> dreht um diesen Punkt, und der Vogel wird um (0|0) gezeichnet. <code>save</code> und <code>restore</code> sorgen dafür, dass Drehung und Verschiebung nicht ins restliche Bild &quot;auslaufen&quot;. Der Winkel kommt aus der Geschwindigkeit: Steigt er, zeigt der Schnabel nach oben, fällt er, nach unten. Der Flügel ist ein Dreieck, dessen Spitze mit <code>cos</code> auf und ab schwingt.</p>
+      <p><strong>Bewegung reduzieren.</strong> Federn, Funken, schwebender Start, blinkende Sterne und die wandernden Hintergrundebenen sind Deko. Wer im Betriebssystem &quot;Bewegung reduzieren&quot; eingestellt hat, bekommt sie nicht zu sehen (<code>bewegungReduziert()</code>). Der Boden läuft weiter, denn er zeigt das Spieltempo.</p>
+    </details></section>
+  </main>
+  <footer class="fuss"><div class="container fuss-in"><span>Browser-Arcade · Open Source</span><nav aria-label="Rechtliches"><a href="./impressum.html">Impressum</a><a href="./datenschutz.html">Datenschutz</a></nav></div></footer>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
