@@ -16,33 +16,33 @@
 /* ---------- Spielfeld ---------- */
 export const BREITE = 360;
 export const HOEHE = 540;
-export const BODEN_Y = 480;            // ab hier beginnt der Boden (60 px Streifen darunter)
-export const DECKE_Y = 0;              // oberer Rand des Spielfelds
-export const VOGEL_X = 100;            // der Vogel bleibt links stehen, die Säulen wandern an ihm vorbei
-export const START_Y = 240;            // Starthöhe des Vogels
+export const BODEN_Y = 480; // ab hier beginnt der Boden (60 px Streifen darunter)
+export const DECKE_Y = 0; // oberer Rand des Spielfelds
+export const VOGEL_X = 100; // der Vogel bleibt links stehen, die Säulen wandern an ihm vorbei
+export const START_Y = 240; // Starthöhe des Vogels
 
 /* ---------- Vogel ---------- */
-export const VOGEL_RADIUS_BILD = 17;   // so groß wird er gezeichnet
-export const VOGEL_RADIUS_HIT = 13;    // so groß ist seine Hitbox (kleiner = fairer)
-export const GRAVITATION = 1500;       // px/s² nach unten
-export const FLUEGELSCHLAG_V = -450;   // Geschwindigkeit direkt nach dem Schlag (negativ = nach oben)
-export const MAX_FALLTEMPO = 620;      // schneller als das fällt er nie (wie ein Luftwiderstand)
+export const VOGEL_RADIUS_BILD = 17; // so groß wird er gezeichnet
+export const VOGEL_RADIUS_HIT = 13; // so groß ist seine Hitbox (kleiner = fairer)
+export const GRAVITATION = 1500; // px/s² nach unten
+export const FLUEGELSCHLAG_V = -450; // Geschwindigkeit direkt nach dem Schlag (negativ = nach oben)
+export const MAX_FALLTEMPO = 620; // schneller als das fällt er nie (wie ein Luftwiderstand)
 
 /* ---------- Säulen ---------- */
-export const SAEULE_B = 62;            // Breite des Säulenkörpers
-export const KAPPE_H = 22;             // Höhe der breiteren "Kappe" am Lückenrand
-export const KAPPE_UEBERSTAND = 5;     // so viel ragt die Kappe links/rechts über den Körper
-export const LUECKE_MIN = 150;         // Lückenhöhe zufällig zwischen MIN und MAX
+export const SAEULE_B = 62; // Breite des Säulenkörpers
+export const KAPPE_H = 22; // Höhe der breiteren "Kappe" am Lückenrand
+export const KAPPE_UEBERSTAND = 5; // so viel ragt die Kappe links/rechts über den Körper
+export const LUECKE_MIN = 150; // Lückenhöhe zufällig zwischen MIN und MAX
 export const LUECKE_MAX = 180;
-export const ABSTAND_ZEIT_MIN = 1.3;   // Sekunden zwischen zwei Säulenpaaren (linke Kante zu linker Kante) ...
-export const ABSTAND_ZEIT_MAX = 1.6;   // ... zufällig zwischen MIN und MAX
-export const RAND_OBEN = 60;           // Lücke hält mindestens so viel Abstand zur Decke ...
-export const RAND_UNTEN = 60;          // ... und zum Boden
-export const MAX_MITTEN_SPRUNG = 150;  // Lückenmitte weicht höchstens so weit vom Vorgänger ab
+export const ABSTAND_ZEIT_MIN = 1.3; // Sekunden zwischen zwei Säulenpaaren (linke Kante zu linker Kante) ...
+export const ABSTAND_ZEIT_MAX = 1.6; // ... zufällig zwischen MIN und MAX
+export const RAND_OBEN = 60; // Lücke hält mindestens so viel Abstand zur Decke ...
+export const RAND_UNTEN = 60; // ... und zum Boden
+export const MAX_MITTEN_SPRUNG = 150; // Lückenmitte weicht höchstens so weit vom Vorgänger ab
 
 /* ---------- Tempo ---------- */
-export const START_TEMPO = 150;        // px/s, mit denen die Säulen nach links wandern
-export const TEMPO_PRO_PUNKT = 2;      // pro passierter Säule etwas schneller
+export const START_TEMPO = 150; // px/s, mit denen die Säulen nach links wandern
+export const TEMPO_PRO_PUNKT = 2; // pro passierter Säule etwas schneller
 export const MAX_TEMPO = 210;
 
 /** Tempo der Säulen in Pixel pro Sekunde, abhängig vom Punktestand. */
@@ -128,8 +128,8 @@ export function kreisTrifftRechteck(kx, ky, r, rechteck) {
  * Ein Paar ist {x, mitteY, luecke, gewertet}: x = linke Kante des Körpers.
  */
 export function saeulenRechtecke(paar) {
-  const oben = paar.mitteY - paar.luecke / 2;      // untere Kante der oberen Säule
-  const unten = paar.mitteY + paar.luecke / 2;     // obere Kante der unteren Säule
+  const oben = paar.mitteY - paar.luecke / 2; // untere Kante der oberen Säule
+  const unten = paar.mitteY + paar.luecke / 2; // obere Kante der unteren Säule
   const kappeX = paar.x - KAPPE_UEBERSTAND;
   const kappeB = SAEULE_B + 2 * KAPPE_UEBERSTAND;
   return [
@@ -151,8 +151,15 @@ export function kollisionsGrund(vogel, paare) {
   if (vogel.y - r <= DECKE_Y) return "decke";
   for (const paar of paare) {
     // Schnelltest: Paare weit weg vom Vogel überspringen (spart Rechnerei).
-    if (paar.x - KAPPE_UEBERSTAND - r > VOGEL_X || paar.x + SAEULE_B + KAPPE_UEBERSTAND + r < VOGEL_X) continue;
-    if (saeulenRechtecke(paar).some((rechteck) => kreisTrifftRechteck(VOGEL_X, vogel.y, r, rechteck))) return "saeule";
+    if (
+      paar.x - KAPPE_UEBERSTAND - r > VOGEL_X ||
+      paar.x + SAEULE_B + KAPPE_UEBERSTAND + r < VOGEL_X
+    )
+      continue;
+    if (
+      saeulenRechtecke(paar).some((rechteck) => kreisTrifftRechteck(VOGEL_X, vogel.y, r, rechteck))
+    )
+      return "saeule";
   }
   return null;
 }
@@ -188,10 +195,19 @@ export function neuesPaar(x, vorherigeMitte, zufallsquelle, abschnitt = ABSCHNIT
   const minMitte = DECKE_Y + RAND_OBEN + luecke / 2 + amplitude;
   const maxMitte = BODEN_Y - RAND_UNTEN - luecke / 2 - amplitude;
   const wurf = zufallsquelle();
-  const basisMitte = vorherigeMitte === null
-    ? minMitte + wurf * (maxMitte - minMitte)                                   // erstes Paar: irgendwo
-    : begrenzen(vorherigeMitte + (wurf * 2 - 1) * MAX_MITTEN_SPRUNG, minMitte, maxMitte);
-  return { x, mitteY: basisMitte, basisMitte, amplitude, phase: zufallsquelle() * Math.PI * 2, luecke, gewertet: false };
+  const basisMitte =
+    vorherigeMitte === null
+      ? minMitte + wurf * (maxMitte - minMitte) // erstes Paar: irgendwo
+      : begrenzen(vorherigeMitte + (wurf * 2 - 1) * MAX_MITTEN_SPRUNG, minMitte, maxMitte);
+  return {
+    x,
+    mitteY: basisMitte,
+    basisMitte,
+    amplitude,
+    phase: zufallsquelle() * Math.PI * 2,
+    luecke,
+    gewertet: false,
+  };
 }
 
 /* ---------- Abschnitte ----------
@@ -199,25 +215,29 @@ export function neuesPaar(x, vorherigeMitte, zufallsquelle, abschnitt = ABSCHNIT
    Abschnitt 3 schwingen die Säulen auf und ab, dazu wechselt die
    Tageszeit. Nach dem letzten bleibt es dort. */
 export const ABSCHNITTE = [
-  { name: "Morgengrauen", ab: 0,  luecke: [150, 180], bewegung: 0 },
-  { name: "Mittag",       ab: 10, luecke: [146, 172], bewegung: 0 },
-  { name: "Böen",         ab: 20, luecke: [144, 168], bewegung: 24 },
-  { name: "Abendrot",     ab: 30, luecke: [140, 162], bewegung: 34 },
-  { name: "Mitternacht",  ab: 40, luecke: [136, 158], bewegung: 42 },
+  { name: "Morgengrauen", ab: 0, luecke: [150, 180], bewegung: 0 },
+  { name: "Mittag", ab: 10, luecke: [146, 172], bewegung: 0 },
+  { name: "Böen", ab: 20, luecke: [144, 168], bewegung: 24 },
+  { name: "Abendrot", ab: 30, luecke: [140, 162], bewegung: 34 },
+  { name: "Mitternacht", ab: 40, luecke: [136, 158], bewegung: 42 },
 ];
-export const SCHWING_DAUER = 2.4;      // Sekunden für ein komplettes Auf und Ab
+export const SCHWING_DAUER = 2.4; // Sekunden für ein komplettes Auf und Ab
 
 /** Abschnitt für den Punktestand (nie unter dem gewählten Start-Abschnitt). */
 export function abschnittIndex(punkte, start = 0) {
   let index = 0;
-  ABSCHNITTE.forEach((a, i) => { if (punkte >= a.ab) index = i; });
+  ABSCHNITTE.forEach((a, i) => {
+    if (punkte >= a.ab) index = i;
+  });
   return Math.max(index, start);
 }
 
 /** Aktuelle Lückenmitte eines (evtl. schwingenden) Paars zur Zeit t in Sekunden. */
 export function schwingMitte(paar, t) {
   if (!paar.amplitude) return paar.basisMitte;
-  return paar.basisMitte + Math.sin((t / SCHWING_DAUER) * Math.PI * 2 + paar.phase) * paar.amplitude;
+  return (
+    paar.basisMitte + Math.sin((t / SCHWING_DAUER) * Math.PI * 2 + paar.phase) * paar.amplitude
+  );
 }
 
 /**

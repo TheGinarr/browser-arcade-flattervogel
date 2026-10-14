@@ -33,22 +33,37 @@ import { bewegungReduziert, gameOverDialog, toplisteAnzeigen } from "./assets/ui
 import { spielSeite, text, TASTE, ansage } from "./assets/mobil.js";
 import { levelWahl } from "./assets/levelwahl.js";
 import {
-  BREITE, HOEHE, BODEN_Y, VOGEL_X, START_Y,
-  VOGEL_RADIUS_BILD, VOGEL_RADIUS_HIT,
-  tempoFuerPunkte, neuerVogel, fluegelschlag, vogelSchritt, neigung,
-  saeulenRechtecke, kollisionsGrund, paarPassiert, neuesPaar, naechsterPaarAbstand,
-  ABSCHNITTE, abschnittIndex, schwingMitte,
+  BREITE,
+  HOEHE,
+  BODEN_Y,
+  VOGEL_X,
+  START_Y,
+  VOGEL_RADIUS_BILD,
+  VOGEL_RADIUS_HIT,
+  tempoFuerPunkte,
+  neuerVogel,
+  fluegelschlag,
+  vogelSchritt,
+  neigung,
+  saeulenRechtecke,
+  kollisionsGrund,
+  paarPassiert,
+  neuesPaar,
+  naechsterPaarAbstand,
+  ABSCHNITTE,
+  abschnittIndex,
+  schwingMitte,
 } from "./logik.js";
 
 /* ---------- Konstanten (Stellschrauben des Spiels) ---------- */
-const SPIEL = "flattervogel";         // Schlüssel für den Speicher (storage.js)
-const SCHRITT = 1 / 240;              // Physik-Zeitschritt in Sekunden (fest!)
-const MAX_FRAME_ABSTAND_MS = 250;     // siehe einzelbild()
-const BLITZ_DAUER_MS = 650;           // Länge des Aufblitzens nach dem Treffer
-const SPAWN_LINIE = BREITE + 40;      // ab hier (knapp rechts außerhalb) entstehen neue Säulenpaare
-const SCHWEBE_AMPLITUDE = 8;          // Auf und Ab des wartenden Vogels (Pixel)
-const SCHLAG_DAUER = 0.3;             // Sekunden für einen kompletten Flügelschlag
-const SPERRE_NACH_DIALOG_MS = 700;    // siehe dialogEntschaerfen()
+const SPIEL = "flattervogel"; // Schlüssel für den Speicher (storage.js)
+const SCHRITT = 1 / 240; // Physik-Zeitschritt in Sekunden (fest!)
+const MAX_FRAME_ABSTAND_MS = 250; // siehe einzelbild()
+const BLITZ_DAUER_MS = 650; // Länge des Aufblitzens nach dem Treffer
+const SPAWN_LINIE = BREITE + 40; // ab hier (knapp rechts außerhalb) entstehen neue Säulenpaare
+const SCHWEBE_AMPLITUDE = 8; // Auf und Ab des wartenden Vogels (Pixel)
+const SCHLAG_DAUER = 0.3; // Sekunden für einen kompletten Flügelschlag
+const SPERRE_NACH_DIALOG_MS = 700; // siehe dialogEntschaerfen()
 
 const TASTEN_FLATTERN = new Set([" ", "arrowup", "w"]);
 
@@ -91,8 +106,9 @@ function mischeMitWeiss(farbe, anteil) {
   const zahl = parseInt(treffer[1], 16);
   // Ein 24-Bit-Wert besteht aus drei Bytes (Rot, Grün, Blau). Mit
   // Bit-Verschiebung (>>) und Maske (& 255) holen wir sie einzeln heraus.
-  const kanaele = [(zahl >> 16) & 255, (zahl >> 8) & 255, zahl & 255]
-    .map((k) => Math.round(k + (255 - k) * anteil));
+  const kanaele = [(zahl >> 16) & 255, (zahl >> 8) & 255, zahl & 255].map((k) =>
+    Math.round(k + (255 - k) * anteil),
+  );
   return `rgb(${kanaele.join(",")})`;
 }
 
@@ -113,21 +129,23 @@ farben.vogelHell = mischeMitWeiss(farben.vogel, 0.45);
 farben.saeuleHell = mischeMitWeiss(farben.saeule, 0.55);
 
 /* ---------- Spielzustand ---------- */
-let vogel;                // { y, vy } aus logik.js
-let paare;                // [{ x, mitteY, luecke, gewertet }, …]
-let naechstesPaarX;       // Weltposition, an der das nächste Paar entsteht (wandert nach links)
-let vorherigeMitte;       // Lückenmitte des letzten Paars (für fairen Höhenverlauf)
+let vogel; // { y, vy } aus logik.js
+let paare; // [{ x, mitteY, luecke, gewertet }, …]
+let naechstesPaarX; // Weltposition, an der das nächste Paar entsteht (wandert nach links)
+let vorherigeMitte; // Lückenmitte des letzten Paars (für fairen Höhenverlauf)
 let punkte;
-let strecke;              // gesamte Strecke der Welt in Pixeln (für Boden und Parallaxe)
-let schlagZeit;           // Sekunden seit dem letzten Flügelschlag (steuert die Flügel-Animation)
+let strecke; // gesamte Strecke der Welt in Pixeln (für Boden und Parallaxe)
+let schlagZeit; // Sekunden seit dem letzten Flügelschlag (steuert die Flügel-Animation)
 let rekordGespeichert = 0;
-let rekordGepulst;        // Puls nur einmal pro Spiel
-let phase;                // "bereit" | "laeuft" | "pause" | "vorbei"
-let abschnitt = 0;        // Index in ABSCHNITTE
-let startAbschnitt = 0;   // in der Auswahl gewählter Start-Abschnitt
-let flugzeit = 0;         // Sekunden seit Start (für das Schwingen der Säulen)
-let himmelVon = 0, himmelWechsel = 0;   // für den weichen Übergang der Tageszeit
-let banner = "", bannerBis = 0;
+let rekordGepulst; // Puls nur einmal pro Spiel
+let phase; // "bereit" | "laeuft" | "pause" | "vorbei"
+let abschnitt = 0; // Index in ABSCHNITTE
+let startAbschnitt = 0; // in der Auswahl gewählter Start-Abschnitt
+let flugzeit = 0; // Sekunden seit Start (für das Schwingen der Säulen)
+let himmelVon = 0,
+  himmelWechsel = 0; // für den weichen Übergang der Tageszeit
+let banner = "",
+  bannerBis = 0;
 
 /* Himmel je Abschnitt: Verlauf oben -> unten und ob Sterne zu sehen sind.
    Im Spielfeld gilt die Tageszeit, außerhalb das Neon-Design. */
@@ -138,11 +156,11 @@ const HIMMEL = [
   { oben: "#3a1846", unten: "#e0784a", sterne: 0.25 },
   { oben: "#05050f", unten: "#141436", sterne: 1 },
 ];
-let akkumulator = 0;      // angesammelte, noch nicht "verbrauchte" Zeit in Sekunden
+let akkumulator = 0; // angesammelte, noch nicht "verbrauchte" Zeit in Sekunden
 let letzteZeit = 0;
 let blitzStart = 0;
 let dialogGezeigt = false;
-let partikel = [];        // Federn und Funken (reine Deko)
+let partikel = []; // Federn und Funken (reine Deko)
 let ruhigerModus = bewegungReduziert();
 
 /* ============================================================
@@ -172,9 +190,11 @@ function hudAktualisieren() {
 /** Kurzer Puls am Rekordfeld, genau in dem Moment, in dem er geknackt wird. */
 function rekordPulsen() {
   hudRekord.classList.remove("rekord-puls");
-  void hudRekord.offsetWidth;   // erzwingt Neuberechnung des Layouts, damit die Animation neu startet
+  void hudRekord.offsetWidth; // erzwingt Neuberechnung des Layouts, damit die Animation neu startet
   hudRekord.classList.add("rekord-puls");
-  hudRekord.addEventListener("animationend", () => hudRekord.classList.remove("rekord-puls"), { once: true });
+  hudRekord.addEventListener("animationend", () => hudRekord.classList.remove("rekord-puls"), {
+    once: true,
+  });
 }
 
 /* ============================================================
@@ -194,7 +214,7 @@ function neuesSpiel(ab = startAbschnitt) {
   paare = [];
   punkte = 0;
   strecke = 0;
-  schlagZeit = 10;               // "lange her": Flügel in Ruhestellung
+  schlagZeit = 10; // "lange her": Flügel in Ruhestellung
   rekordGepulst = false;
   partikel = [];
   akkumulator = 0;
@@ -244,7 +264,7 @@ function schritt() {
   strecke += tempo * SCHRITT;
   for (const paar of paare) paar.x -= tempo * SCHRITT;
   naechstesPaarX -= tempo * SCHRITT;
-  paare = paare.filter((paar) => paar.x > -120);   // links aus dem Bild: entsorgen
+  paare = paare.filter((paar) => paar.x > -120); // links aus dem Bild: entsorgen
   paareNachlegen();
 
   // Punkte: +1, sobald die Mitte eines Paars am Vogel vorbei ist
@@ -292,7 +312,7 @@ function dialogAnzeigen() {
     spiel: SPIEL,
     punkte,
     punkteText: saeulenText(punkte),
-    richtung: "hoch",                 // beim Flattervogel ist MEHR besser
+    richtung: "hoch", // beim Flattervogel ist MEHR besser
     format: saeulenText,
     neustart: neuesSpiel,
   });
@@ -343,7 +363,7 @@ function pauseUmschalten() {
  */
 function flattern() {
   if (phase === "bereit") {
-    phase = "laeuft";                  // der erste Schlag startet die Runde
+    phase = "laeuft"; // der erste Schlag startet die Runde
     akkumulator = 0;
     schlagen();
   } else if (phase === "laeuft") {
@@ -384,7 +404,7 @@ document.addEventListener("keydown", (ereignis) => {
     // Leertaste auf einem fokussierten Knopf/Link soll diesen bedienen
     // (Reset-Knopf, Zusammenklappbox), nicht das Spiel.
     if (taste === " " && ziel instanceof HTMLElement && ziel.matches("button, a, summary")) return;
-    ereignis.preventDefault();               // Pfeil/Leertaste würden sonst scrollen
+    ereignis.preventDefault(); // Pfeil/Leertaste würden sonst scrollen
     // Gehaltene Taste = Auto-Wiederholung (ereignis.repeat). Das soll NICHT
     // im Sekundentakt flattern, jeder Schlag braucht einen eigenen Tastendruck.
     if (!ereignis.repeat) flattern();
@@ -410,10 +430,10 @@ window.addEventListener("blur", () => {
 resetKnopf.addEventListener("click", () => {
   spielZuruecksetzen(SPIEL);
   wahl.neuLaden();
-  toplisteAktualisieren();                 // Liste leer, Rekord wieder 0
+  toplisteAktualisieren(); // Liste leer, Rekord wieder 0
   hudAktualisieren();
   if (phase === "laeuft") phase = "pause"; // nicht im Hintergrund weiterspielen
-  resetKnopf.blur();                       // sonst würde die nächste Leertaste den Knopf drücken
+  resetKnopf.blur(); // sonst würde die nächste Leertaste den Knopf drücken
 });
 
 /* ============================================================
@@ -435,7 +455,7 @@ function einzelbild(jetzt) {
   // wären sonst Hunderte Schritte auf einmal fällig.
   const abstandMs = Math.min(jetzt - letzteZeit, MAX_FRAME_ABSTAND_MS);
   letzteZeit = jetzt;
-  ruhigerModus = bewegungReduziert();   // Nutzer kann die Einstellung jederzeit ändern
+  ruhigerModus = bewegungReduziert(); // Nutzer kann die Einstellung jederzeit ändern
 
   if (phase === "laeuft") {
     akkumulator += abstandMs / 1000;
@@ -499,7 +519,8 @@ const sterne = Array.from({ length: 28 }, () => ({
 
 /** Mischt zwei #rrggbb-Farben (t = 0: a, t = 1: b). */
 function farbMix(a, b, t) {
-  const za = parseInt(a.slice(1), 16), zb = parseInt(b.slice(1), 16);
+  const za = parseInt(a.slice(1), 16),
+    zb = parseInt(b.slice(1), 16);
   const k = (s) => Math.round(((za >> s) & 255) * (1 - t) + ((zb >> s) & 255) * t);
   return `rgb(${k(16)},${k(8)},${k(0)})`;
 }
@@ -508,7 +529,8 @@ function zeichneHimmel() {
   const z = zeichner;
   // In 1,5 s weich von der alten zur neuen Tageszeit überblenden
   const t = ruhigerModus ? 1 : Math.min(1, (flugzeit - himmelWechsel) / 1.5);
-  const alt = HIMMEL[himmelVon], neu = HIMMEL[abschnitt];
+  const alt = HIMMEL[himmelVon],
+    neu = HIMMEL[abschnitt];
   const verlauf = z.createLinearGradient(0, 0, 0, BODEN_Y);
   verlauf.addColorStop(0, farbMix(alt.oben, neu.oben, t));
   verlauf.addColorStop(1, farbMix(alt.unten, neu.unten, t));
@@ -553,7 +575,11 @@ function zeichneAlles(jetzt) {
   }
 
   if (phase === "bereit") {
-    zeichneOverlay(ABSCHNITTE[abschnitt].name.toUpperCase(), text("Leertaste, Klick oder Tippen startet", "Tippen lässt den Vogel flattern"), jetzt);
+    zeichneOverlay(
+      ABSCHNITTE[abschnitt].name.toUpperCase(),
+      text("Leertaste, Klick oder Tippen startet", "Tippen lässt den Vogel flattern"),
+      jetzt,
+    );
   } else if (phase === "pause") {
     zeichneOverlay("PAUSE", text("P oder Leertaste: weiter", "Antippen: weiter"), jetzt);
   } else if (phase === "vorbei" && !ruhigerModus) {
@@ -568,7 +594,10 @@ function zeichneHintergrund(jetzt, sternHelligkeit = 1) {
   z.fillStyle = farben.text;
   for (const stern of sterne) {
     if (sternHelligkeit <= 0) break;
-    z.globalAlpha = sternHelligkeit * stern.hell * (ruhigerModus ? 1 : 0.7 + 0.3 * Math.sin(jetzt / 600 + stern.x));
+    z.globalAlpha =
+      sternHelligkeit *
+      stern.hell *
+      (ruhigerModus ? 1 : 0.7 + 0.3 * Math.sin(jetzt / 600 + stern.x));
     z.fillRect(Math.round(stern.x), Math.round(stern.y), 2, 2);
   }
   z.globalAlpha = 1;
@@ -582,7 +611,12 @@ function zeichneHintergrund(jetzt, sternHelligkeit = 1) {
     z.fillStyle = ebene.farbe;
     for (const kachel of [0, 1]) {
       for (const turm of ebene.tuerme) {
-        z.fillRect(Math.round(kachel * BREITE + turm.x - versatz), Math.round(BODEN_Y - turm.h), Math.ceil(turm.b), Math.ceil(turm.h));
+        z.fillRect(
+          Math.round(kachel * BREITE + turm.x - versatz),
+          Math.round(BODEN_Y - turm.h),
+          Math.ceil(turm.b),
+          Math.ceil(turm.h),
+        );
       }
     }
   }
@@ -648,18 +682,18 @@ function zeichneKoerper(r, istOben, jetzt) {
   const fluss = ruhigerModus ? 0 : (jetzt / 18) % pitch;
   z.beginPath();
   z.rect(r.x, r.y, r.b, r.h);
-  z.clip();                                           // nichts außerhalb der Säule malen
+  z.clip(); // nichts außerhalb der Säule malen
   z.fillStyle = farben.saeule;
   z.globalAlpha = 0.55;
   for (let y = r.y - pitch + (istOben ? fluss : pitch - fluss); y < r.y + r.h; y += pitch) {
     z.fillRect(r.x + r.b / 2 - 2, y, 4, 12);
   }
   z.globalAlpha = 0.25;
-  z.fillRect(r.x + 5, r.y, 2, r.h);                   // Lichtkante links
+  z.fillRect(r.x + 5, r.y, 2, r.h); // Lichtkante links
   z.globalAlpha = 1;
   z.strokeStyle = farben.saeule;
   z.lineWidth = 2;
-  z.strokeRect(r.x + 1, r.y - 2, r.b - 2, r.h + 4);   // Neon-Rahmen
+  z.strokeRect(r.x + 1, r.y - 2, r.b - 2, r.h + 4); // Neon-Rahmen
   z.restore();
 }
 
@@ -673,7 +707,7 @@ function zeichneKappe(r) {
   z.shadowBlur = 0;
   z.fillStyle = farben.saeuleHell;
   z.globalAlpha = 0.7;
-  z.fillRect(r.x + 4, r.y + 4, r.b - 8, 4);           // Glanzstreifen
+  z.fillRect(r.x + 4, r.y + 4, r.b - 8, 4); // Glanzstreifen
   z.restore();
 }
 
@@ -685,15 +719,14 @@ function zeichneVogel(jetzt) {
 
   // Flügel-Phase 0..1: Beim Warten schlägt er im Dauertakt, sonst genau
   // einmal pro Flügelschlag (danach Ruhestellung = Spitze oben).
-  const t = phase === "bereit"
-    ? ((jetzt / 1000) % 0.5) / 0.5
-    : Math.min(schlagZeit / SCHLAG_DAUER, 1);
+  const t =
+    phase === "bereit" ? ((jetzt / 1000) % 0.5) / 0.5 : Math.min(schlagZeit / SCHLAG_DAUER, 1);
   // cos(2π·t): 0 → Spitze oben, 0,5 → ganz unten, 1 → wieder oben.
   const fluegelSpitzeY = -13 * Math.cos(t * Math.PI * 2);
 
   z.save();
-  z.translate(VOGEL_X, vogel.y);         // Nullpunkt in die Vogelmitte legen ...
-  z.rotate(winkel);                      // ... dann um diesen Punkt drehen. Reihenfolge ist wichtig!
+  z.translate(VOGEL_X, vogel.y); // Nullpunkt in die Vogelmitte legen ...
+  z.rotate(winkel); // ... dann um diesen Punkt drehen. Reihenfolge ist wichtig!
 
   z.shadowColor = farben.vogel;
   z.shadowBlur = 14;
@@ -745,9 +778,9 @@ function zeichneVogel(jetzt) {
   z.shadowColor = farben.saeule;
   z.shadowBlur = 8;
   z.beginPath();
-  z.moveTo(2, -6);                        // Basis oben (am Körper)
-  z.lineTo(2, 6);                         // Basis unten
-  z.lineTo(-21, fluegelSpitzeY);          // bewegliche Spitze
+  z.moveTo(2, -6); // Basis oben (am Körper)
+  z.lineTo(2, 6); // Basis unten
+  z.lineTo(-21, fluegelSpitzeY); // bewegliche Spitze
   z.closePath();
   z.fill();
 
@@ -757,7 +790,7 @@ function zeichneVogel(jetzt) {
 /* ---------- Partikel (Federn und Funken, nur Deko) ---------- */
 
 function federnErzeugen() {
-  if (ruhigerModus) return;                       // reine Deko → bei reduzierter Bewegung weglassen
+  if (ruhigerModus) return; // reine Deko → bei reduzierter Bewegung weglassen
   for (let i = 0; i < 5; i++) {
     partikel.push({
       x: VOGEL_X - 14 + Math.random() * 6,
@@ -776,7 +809,8 @@ function funkenErzeugen() {
     const winkel = Math.random() * Math.PI * 2;
     const tempo = 60 + Math.random() * 180;
     partikel.push({
-      x: VOGEL_X, y: vogel.y,
+      x: VOGEL_X,
+      y: vogel.y,
       vx: Math.cos(winkel) * tempo,
       vy: Math.sin(winkel) * tempo - 40,
       leben: 1,
@@ -790,8 +824,8 @@ function partikelBewegen(sekunden) {
   for (const p of partikel) {
     p.x += p.vx * sekunden;
     p.y += p.vy * sekunden;
-    p.vy += 300 * sekunden;                       // sie sinken leicht
-    p.leben -= sekunden * 2.2;                    // in ca. 0,45 s ausgeblendet
+    p.vy += 300 * sekunden; // sie sinken leicht
+    p.leben -= sekunden * 2.2; // in ca. 0,45 s ausgeblendet
   }
   partikel = partikel.filter((p) => p.leben > 0);
 }
@@ -886,7 +920,11 @@ neuesSpiel(0);
 // Handy: große Flatter-Taste, Einpassen, Scroll-Sperre, Spielmodus (assets/mobil.js)
 spielSeite({
   phase: () => phase,
-  gamepad: { rechts: [{ ...TASTE.leer, zeichen: "▲", name: "Flattern", beschriftung: "FLATTERN", gross: true }] },
+  gamepad: {
+    rechts: [
+      { ...TASTE.leer, zeichen: "▲", name: "Flattern", beschriftung: "FLATTERN", gross: true },
+    ],
+  },
 });
 letzteZeit = performance.now();
 requestAnimationFrame(einzelbild);
